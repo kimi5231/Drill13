@@ -121,6 +121,20 @@ class Zombie:
             return BehaviorTree.FAIL
         pass
 
+    def is_boys_ball_small(self):
+        if play_mode.boy.ball_count < self.ball_count:
+            return BehaviorTree.SUCCESS
+        else:
+            return BehaviorTree.FAIL
+
+    def run_away_to_boy(self, r=0.5):
+        self.state = 'Walk'
+        self.move_slightly_to(-play_mode.boy.x, -play_mode.boy.y)
+        if self.distance_less_than(play_mode.boy.x, play_mode.boy.y, self.x, self.y, r):
+            return BehaviorTree.SUCCESS
+        else:
+            return BehaviorTree.RUNNING
+
     def move_to_boy(self, r=0.5):
         self.state = 'Walk'
         self.move_slightly_to(play_mode.boy.x, play_mode.boy.y)
@@ -149,13 +163,23 @@ class Zombie:
         c1 = Condition('소년이 근처에 있는가?', self.is_boy_nearby, 7)
         a4 = Action('소년으로 이동', self.move_to_boy)
 
-        SEQ_chase_boy = Sequence('소년을 추적', c1, a4)
+        #SEQ_chase_boy = Sequence('소년을 추적', c1, a4)
 
-        SEL_chase_or_flee = Selector('추적 또는 배회', SEQ_chase_boy, SEQ_wander)
+        #SEL_chase_or_flee = Selector('추적 또는 배회', SEQ_chase_boy, SEQ_wander)
 
         a5 = Action('순찰 위치 가져오기', self.get_patrol_location)
 
-        root = SEQ_patrol = Sequence('순찰', a5, a2)
+        SEQ_patrol = Sequence('순찰', a5, a2)
+
+        c2 = Condition('소년이 가진 공의 수가 좀비보다 적은가?', self.is_boys_ball_small)
+        a6 = Action('소년으로부터 도망', self.run_away_to_boy)
+
+        SEQ_chase_boy = Sequence('소년을 추적', c1, c2, a4)
+        SEQ_run_away_to_boy = Sequence('소년으로부터 도망', c1, a6)
+
+        SEL_chase_or_run_away = Selector('추적 또는 도망', SEQ_chase_boy, SEQ_run_away_to_boy)
+        root = SEL_chase_or_flee = Selector('추적 또는 배회', SEL_chase_or_run_away, SEQ_wander)
+
 
         self.bt = BehaviorTree(root)
         pass
